@@ -1,6 +1,7 @@
 ---
 layout: post
 title:  "Helm V2 迁移到 V3 版本"
+date:   2020-04-19 13:37:18 +0800
 categories: devops
 tags:  devops linux k8s 
 author: msj905
