@@ -7,7 +7,7 @@
 
 # Site settings
 title: 迈书杰的技术专栏
-brief-intro: Android and Python Coder
+brief-intro: devops and Python ai
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://msj905.github.io" # the base hostname & protocol for your site
 
