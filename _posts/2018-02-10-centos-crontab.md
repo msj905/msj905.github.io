@@ -119,13 +119,12 @@ NAME    NAMESPACE       REVISION        UPDATED                                 
 NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART
 minio   argo            1               2019-09-11 03:47:51.239461137 +0000 UTC deployed        minio-2.5.13
 注意：由于我们没有指定--delete-v2-releases选项，所以 Helm V2 minio 这个 release 信息还是存在的，我们可以在以后使用 kubectl 进行删除。当你准备好迁移你所有的 releases 的时候，你可以循环helm list里面的所有 release 来自动的将每个 Helm V2 release 迁移到 Helm V3 版本去。如果你正在使用 Tillerless Helm V2，只需要指定--tiller-out-cluster选项来迁移 release 即可：$ helm3 2to3 convert minio --tiller-out-cluster
-清理 Helm V2 数据最后当然就是清理之前版本的旧数据了，虽然这并不是必须的，但是还是建议你清理下，可以避免一些冲突。清理 Helm V2 的数据比较简单：删除主文件夹~/.helm如果你没有使用--delete-v2-releases选项，那么旧使用 kubectl 工具来删除 Tiller releases 数据卸载掉烦人😱的 TillerHappy Helm v3 sailing~原文链接：https://helm.sh/blog/migrate-from-helm-v2-to-helm-v3/
+清理 Helm V2 数据最后当然就是清理之前版本的旧数据了，虽然这并不是必须的，但是还是建议你清理下，可以避免一些冲突。清理 Helm V2 的数据比较简单：删除主文件夹~/.helm如果你没有使用--delete-v2-releases选项，那么旧使用 kubectl 工具来删除 Tiller releases 数据卸载掉烦人😱的 TillerHappy Helm v3 sailing~
 
-引用：
 
-http://blog.csdn.net/u012402276/article/details/51063269
-https://www.cnblogs.com/longjshz/p/5779215.html
-http://blog.csdn.net/edgdvcyz/article/details/53348832
+原文链接：https://helm.sh/blog/migrate-from-helm-v2-to-helm-v3/
+
+
 
 
 
