@@ -1,9 +1,9 @@
 ---
 layout: post
-title:  "CentOS7定时任务详解"
-categories: linux
-tags:  centos7 crontab linux 工具软件  
-author: SnakeSon
+title:  "Helm V2 迁移到 V3 版本"
+categories: devops
+tags:  devops linux k8s 
+author: msj905
 ---
 
 * content
@@ -12,172 +12,114 @@ author: SnakeSon
 
 ## 前言
 
-工作中需要开启一个定时任务：每天晚上2点进行爬虫代码的运行，这不得不去学习一下linux 下的定时任务crontab
-
-##  crontab
-
-
-yum install crontabs
-
-说明：
-/sbin/service crond start //启动服务
-/sbin/service crond stop //关闭服务
-/sbin/service crond restart //重启服务
-/sbin/service crond reload //重新载入配置
-查看crontab服务状态：service crond status
-手动启动crontab服务：service crond start
-查看crontab服务是否已设置为开机启动，执行命令：ntsysv
-加入开机自动启动:
-chkconfig crond on
+Helm V3 版本已经发布了第三个 Beta 版本了，由于 V2 和 V3 版本之间的架构变化较大，所以如果我们现在正在使用 V2 版本的话，要迁移到 V3 版本了就有点小麻烦，其中最重要的当然就是数据迁移的问题，为了解决这个版本迁移问题，官方提供了一个名为 helm-2to3 的插件可以来简化我们的迁移工作。安装 Helm V3为了能够让 Helm V2 CLI 包还可以继续使用，所以我们这里就不直接覆盖了，让两个版本的 CLI 包可以共存，比较迁移还是有风险的，等到我们准备好移除 V2 版本的时候再删除也不迟。在 Helm GitHub 仓库上下载最新的 V3 Beta 版本，地址：https://github.com/helm/helm/releases，要注意选择和你系统一致的二进制包，比如我们这里是 Mac 系统，就下载MacOS amd64这个包，下载完成后解压将对应的 Helm CLI 包重命名为helm3，并移动到 PATH 路径（比如/usr/local/bin）下面去，然后我们就可以准备使用 helm3 命令了
+##  步骤
 
 
+$ helm3 version
+version.BuildInfo{Version:"v3.0.0-beta.3", GitCommit:"5cb923eecbe80d1ad76399aee234717c11931d9a", GitTreeState:"clean", GoVersion:"go1.12.9"}
+$ helm repo list
+NAME            URL
+stable          http://mirror.azure.cn/kubernetes/charts/
+local               http://127.0.0.1:8879/charts
+$ helm3 repo list
+Error: no repositories to show
+我们可以看到使用 helm3 命令查看不到我们之前配置的 chart 仓库信息。HELM-2TO3 插件helm-2to3 插件就可以让我们将 Helm V2 版本的配置和 release 迁移到 Helm V3 版本去。安装的 Kubernetes 对象不会被修改或者删除，所以不用担心。接下来我们就来安装这个插件。安装直接使用下面的命令安装即可：$ helm3 plugin install https://github.com/helm/helm-2to3
+Downloading and installing helm-2to3 v0.1.1 ...
+https://github.com/helm/helm-2to3/releases/download/v0.1.1/helm-2to3_0.1.1_darwin_amd64.tar.gz
 
+Installed plugin: 2to3
+然后可以使用 helm3 命令查看插件是否安装成功：$ helm3 plugin list
+NAME    VERSION DESCRIPTION
+2to3    0.1.1   migrate Helm v2 configuration and releases in-place to Helm v3
+$ helm3 2to3
+Migrate Helm v2 configuration and releases in-place to Helm v3
 
+Usage:
+  2to3 [command]
 
+Available Commands:
+  convert     migrate Helm v2 release in-place to Helm v3
+  help        Help about any command
+  move        migrate Helm v2 configuration in-place to Helm v3
 
+Flags:
+  -h, --help   help for 2to3
 
-## 1，crontab命令
+Use "2to3 [command] --help" for more information about a command.
+到这里就证明我们的 helm-2to3 插件已经安装成功了。插件特性现在插件支持的功能主要有两个部分：迁移 Helm V2 配置迁移 Helm V2 release接下来我们就来分别操作下。
 
-功能说明：设置计时器。
-语　　法：crontab [-u <用户名称>][配置文件] 或 crontab [-u <用户名称>][-elr]
+迁移 Helm V2 配置首先我们需要迁移 Helm V2 版本的相关配置和数据目录：$ helm3 2to3 move config
+[Helm 2] Home directory: /Users/ych/.helm
+[Helm 3] Config directory: /Users/ych/Library/Preferences/helm
+[Helm 3] Data directory: /Users/ych/Library/helm
+[Helm 3] Create config folder "/Users/ych/Library/Preferences/helm" .
+[Helm 3] Config folder "/Users/ych/Library/Preferences/helm" created.
+[Helm 2] repositories file "/Users/ych/.helm/repository/repositories.yaml" will copy to [Helm 3] config folder "/Users/ych/Library/Preferences/helm/repositories.yaml" .
+[Helm 2] repositories file "/Users/ych/.helm/repository/repositories.yaml" copied successfully to [Helm 3] config folder "/Users/ych/Library/Preferences/helm/repositories.yaml" .
+[Helm 3] Create data folder "/Users/ych/Library/helm" .
+[Helm 3] data folder "/Users/ych/Library/helm" created.
+[Helm 2] plugins "/Users/ych/.helm/plugins" will copy to [Helm 3] data folder "/Users/ych/Library/helm/plugins" .
+[Helm 2] plugins "/Users/ych/.helm/plugins" copied successfully to [Helm 3] data folder "/Users/ych/Library/helm/plugins" .
+[Helm 2] starters "/Users/ych/.helm/starters" will copy to [Helm 3] data folder "/Users/ych/Library/helm/starters" .
+[Helm 2] starters "/Users/ych/.helm/starters" copied successfully to [Helm 3] data folder "/Users/ych/Library/helm/starters" .
+上面的操作会迁移：Chart startersChart 仓库插件不过需要注意的是，请检查下所有的 Helm V2 下面的插件是否能够在 Helm V3 下面正常工作，把不起作用的插件删除即可。现在我们再查看下 Chart 仓库信息：$ helm3 repo list
+NAME            URL
+stable          http://mirror.azure.cn/kubernetes/charts/
+local               http://127.0.0.1:8879/charts
+$ helm3 plugin list
+NAME    VERSION DESCRIPTION
+2to3    0.1.1   migrate Helm v2 configuration and releases in-place to Helm v3
+push    0.7.1   Push chart package to ChartMuseum
+我们可以看到已经可以看到 Chart 仓库信息了，在 Helm V3 下面也可以使用之前 V2 版本提供的 Chart 仓库和插件了。上面的 move config 命令会创建 Helm V3 配置和数据目录（如果它们不存在），并将覆盖repositories.yaml文件（如果存在）。此外，该插件还支持将非默认的 Helm V2 主目录以及 Helm V3 配置和数据目录，使用如下配置使用即可：$ export HELM_V2_HOME=$HOME/.helm2
+$ export HELM_V3_CONFIG=$HOME/.helm3
+$ export HELM_V3_DATA=$PWD/.helm3
+$ helm3 2to3 move config
+迁移 Helm V2 Release现在我们可以开始迁移 releases 了。可以使用如下命令查看下命令的可用选项：$ helm3 2to3 convert -h
+migrate Helm v2 release in-place to Helm v3
 
-补充说明：cron是一个常驻服务，它提供计时器的功能，让用户在特定的时间得以执行预设的指令或程序。只要用户会编辑计时器的配置文件，就可以使 用计时器的功能。
+Usage:
+  2to3 convert [flags] RELEASE
 
-其配置文件格式如下：
-Minute Hour Day Month DayOFWeek Command
+Flags:
+      --delete-v2-releases       v2 releases are deleted after migration. By default, the v2 releases are retained
+      --dry-run                  simulate a convert
+  -h, --help                     help for convert
+  -l, --label string             label to select tiller resources by (default "OWNER=TILLER")
+  -s, --release-storage string   v2 release storage type/object. It can be 'secrets' or 'configmaps'. This is only used with the 'tiller-out-cluster' flag (default "secrets")
+  -t, --tiller-ns string         namespace of Tiller (default "kube-system")
+      --tiller-out-cluster       when  Tiller is not running in the cluster e.g. Tillerless
+可以看到最后的 --tiller-out-cluster 参数，甚至支持 Tillerless Helm v2。现在我们来查看下 Helm V2 下面的 release，然后选择一个来测试下迁移：$ helm list
 
-参　　数：
--e 　编辑该用户的计时器设置。
--l 　列出该用户的计时器设置。
--r 　删除该用户的计时器设置。
--u<用户名称> 　指定要设定计时器的用户名称。
+NAME            REVISION        UPDATED                         STATUS          CHART                   APP VERSION     NAMESPACE
+minio       1           Wed Sep 11 11:47:51 2019        DEPLOYED        minio-2.5.13    RELEASE.2019-08-07T01-59-21Z    argo
+redis           1               Wed Sep 11 14:52:57 2019        DEPLOYED        redis-9.1.7             5.0.5           redis
+上面我们也看到该迁移命令支持--dry-run选项，当然最安全的方式是先使用下该参数测试下效果：$ helm3 2to3 convert --dry-run minio
+NOTE: This is in dry-run mode, the following actions will not be executed.
+Run without --dry-run to take the actions described below:
 
-## 2，crontab 格式
+Release "minio" will be converted from Helm 2 to Helm 3.
+[Helm 3] Release "minio" will be created.
+[Helm 3] ReleaseVersion "minio.v1" will be created.
+我们可以查看上面的dry-run模式下面的一些描述信息，没有什么问题的话就可以真正的来执行迁移操作了：$ helm3 2to3 convert minio
+Release "minio" will be converted from Helm 2 to Helm 3.
+[Helm 3] Release "minio" will be created.
+[Helm 3] ReleaseVersion "minio.v1" will be created.
+[Helm 3] ReleaseVersion "minio.v1" created.
+[Helm 3] Release "minio" created.
+Release "minio" was converted successfully from Helm 2 to Helm 3. Note: the v2 releases still remain and should be removed to avoid conflicts with the migrated v3 releases.
+迁移完成后，然后检查下是否成功了：$ helm list
 
-基本格式 :
-* *　 *　 *　 *　　command
-分　时　日　月　周　 命令
-第1列表示分钟1～59 每分钟用*或者 */1表示
-第2列表示小时1～23（0表示0点）
-第3列表示日期1～31
-第4列 表示月份1～12
-第5列标识号星期0～6（0表示星期天）
-第6列要运行的命令
-```js
-
-# Use the hash sign to prefix a comment
-# +—————- minute (0 – 59)
-# | +————- hour (0 – 23)
-# | | +———- day of month (1 – 31)
-# | | | +——- month (1 – 12)
-# | | | | +—- day of week (0 – 7) (Sunday=0 or 7)
-# | | | | |
-# * * * * * command to be executed
-```
-## 3，crontab文件的一些例子：
-
-> 1 简单打印
-
-```js
-
-每天早上6点 
-0 6 * * * echo "Good morning." >> /tmp/test.txt //注意单纯echo，从屏幕上看不到任何输出，因为cron把任何输出都email到root的信箱了。
-
-每两个小时 
-0 */2 * * * echo "Have a break now." >> /tmp/test.txt  
-
-晚上11点到早上8点之间每两个小时和早上八点 
-0 23-7/2，8 * * * echo "Have a good dream" >> /tmp/test.txt
-
-每个月的4号和每个礼拜的礼拜一到礼拜三的早上11点 
-0 11 4 * 1-3 command line
-
-1月1日早上4点 
-0 4 1 1 * command line SHELL=/bin/bash PATH=/sbin:/bin:/usr/sbin:/usr/bin MAILTO=root //如果出现错误，或者有数据输出，数据作为邮件发给这个帐号 HOME=/ 
-
-每小时执行/etc/cron.hourly内的脚本
-01 * * * * root run-parts /etc/cron.hourly
-
-每天执行/etc/cron.daily内的脚本
-02 4 * * * root run-parts /etc/cron.daily 
-
-每星期执行/etc/cron.weekly内的脚本
-22 4 * * 0 root run-parts /etc/cron.weekly 
-
-每月去执行/etc/cron.monthly内的脚本 
-42 4 1 * * root run-parts /etc/cron.monthly 
-
-注意: "run-parts"这个参数了，如果去掉这个参数的话，后面就可以写要运行的某个脚本名，而不是文件夹名。 　 
-
-每天的下午4点、5点、6点的5 min、15 min、25 min、35 min、45 min、55 min时执行命令。 
-5，15，25，35，45，55 16，17，18 * * * command
-
-每周一，三，五的下午3：00系统进入维护状态，重新启动系统。
-00 15 * * 1，3，5 shutdown -r +5
-
-每小时的10分，40分执行用户目录下的innd/bbslin这个指令： 
-10，40 * * * * innd/bbslink 
-
-每小时的1分执行用户目录下的bin/account这个指令： 
-1 * * * * bin/account
-
-每天早晨三点二十分执行用户目录下如下所示的两个指令（每个指令以;分隔）： 
-20 3 * * * （/bin/rm -f expire.ls logins.bad;bin/expire$#@62;expire.1st）　　
-
-每年的一月和四月，4号到9号的3点12分和3点55分执行/bin/rm -f expire.1st这个指令，并把结果添加在mm.txt这个文件之后（mm.txt文件位于用户自己的目录位置）。 
-12,55 3 4-9 1,4 * /bin/rm -f expire.1st$#@62;$#@62;mm.txt 
-```
-
-------
-
-> 2 nginx示例
-
-```js
-
-30 21 * * * /etc/init.d/nginx restart
-每晚的21:30重启 nginx。
-
-45 4 1,10,22 * * /etc/init.d/nginx restart
-每月1、 10、22日的4 : 45重启nginx。
-
-10 1 * * 6,0 /etc/init.d/nginx restart
-每周六、周日的1 : 10重启nginx。
-
-0,30 18-23 * * * /etc/init.d/nginx restart
-每天18 : 00至23 : 00之间每隔30分钟重启nginx。
-
-0 23 * * 6 /etc/init.d/nginx restart
-每星期六的11 : 00 pm重启nginx。
-
-* */1 * * * /etc/init.d/nginx restart
-每一小时重启nginx
-
-* 23-7/1 * * * /etc/init.d/nginx restart
-晚上11点到早上7点之间，每 隔一小时重启nginx
-
-0 11 4 * mon-wed /etc/init.d/nginx restart
-每月的4号与每周一到周三 的11点重启nginx
-
-0 4 1 jan * /etc/init.d/nginx restart
-一月一号的4点重启nginx
-
-*/30 * * * * /usr/sbin/ntpdate 210.72.145.20
-每半小时同步一下时间
-```
-
-##  4 创建cron脚本
-
-1. 第一步：写cron脚本文件,命名为crontest.cron。
-15,30,45,59 * * * * echo "xgmtest....." >> xgmtest.txt  表示，每隔15分钟，执行打印一次命令 
-
-2. 第二步：添加定时任务。执行命令 “crontab crontest.cron”。搞定 
-
-3. 第三步："crontab -l" 查看定时任务是否成功或者检测/var/spool/cron下是否生成对应cron脚本
-
-## 将脚本改为可执行（针对shell，.sh文件）
-
-> chmod +x filename
-
+NAME            REVISION        UPDATED                         STATUS          CHART                   APP VERSION     NAMESPACE
+minio       1           Wed Sep 11 11:47:51 2019        DEPLOYED        minio-2.5.13    RELEASE.2019-08-07T01-59-21Z    argo
+redis           1               Wed Sep 11 14:52:57 2019        DEPLOYED        redis-9.1.7             5.0.5           redis
+$ helm3 list
+NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART
+我们可以看到执行helm3 list命令并没有任何 release 信息，这是因为我们迁移的 minio 这个 release 是被安装在argo这个命名空间下面的，所以需要指定命名空间才可以看到：$ helm3 list -n argo
+NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART
+minio   argo            1               2019-09-11 03:47:51.239461137 +0000 UTC deployed        minio-2.5.13
+注意：由于我们没有指定--delete-v2-releases选项，所以 Helm V2 minio 这个 release 信息还是存在的，我们可以在以后使用 kubectl 进行删除。当你准备好迁移你所有的 releases 的时候，你可以循环helm list里面的所有 release 来自动的将每个 Helm V2 release 迁移到 Helm V3 版本去。如果你正在使用 Tillerless Helm V2，只需要指定--tiller-out-cluster选项来迁移 release 即可：$ helm3 2to3 convert minio --tiller-out-cluster
+清理 Helm V2 数据最后当然就是清理之前版本的旧数据了，虽然这并不是必须的，但是还是建议你清理下，可以避免一些冲突。清理 Helm V2 的数据比较简单：删除主文件夹~/.helm如果你没有使用--delete-v2-releases选项，那么旧使用 kubectl 工具来删除 Tiller releases 数据卸载掉烦人😱的 TillerHappy Helm v3 sailing~原文链接：https://helm.sh/blog/migrate-from-helm-v2-to-helm-v3/
 
 引用：
 
